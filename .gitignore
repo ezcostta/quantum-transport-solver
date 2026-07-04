@@ -1,3 +1,4 @@
+"
 # Python
 __pycache__/
 *.py[cod]
@@ -10,11 +11,15 @@ venv/
 # pytest
 .pytest_cache/
 
-# VSCode
-.vscode/
+# Ruff
+.ruff_cache/
+
+# MyPy
+.mypy_cache/
 
 # Jupyter
 .ipynb_checkpoints/
 
 # macOS
 .DS_Store
+" | save .gitignore
