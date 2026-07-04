@@ -1,0 +1,13 @@
+name: qtransport311
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy
+  - scipy
+  - pytest
+  - black
+  - ruff
+  - pip
+  - pip:
+      - -e .
