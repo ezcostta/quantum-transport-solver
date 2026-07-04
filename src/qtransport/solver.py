@@ -43,7 +43,7 @@ class OneDimensionalScatteringSolver:
         psi_m1_in = np.exp(-1j * k)
         psi_m2_in = np.exp(-2j * k)
 
-        A[0, 0] = -t
+        A[0, 0] = t
         A[0, r_index] = energy * np.exp(1j * k) + t * np.exp(2j * k)
         b[0] = -(energy * psi_m1_in + t * psi_m2_in)
 
@@ -68,7 +68,7 @@ class OneDimensionalScatteringSolver:
         # Equation at right boundary site j = N
         # E psi_N = -t psi_{N-1} - t psi_{N+1}
         row = N + 1
-        A[row, N - 1] = -t
+        A[row, N - 1] = t
         A[row, tau_index] = energy * np.exp(1j * k * N) + t * np.exp(1j * k * (N + 1))
 
         x = np.linalg.solve(A, b)
