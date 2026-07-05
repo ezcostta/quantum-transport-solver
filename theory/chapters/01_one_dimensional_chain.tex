@@ -1,9 +1,509 @@
-\chapter{One-Dimensional Tight-Binding Chain}
+\chapter{The One-Dimensional Tight-Binding Chain}
 
-\section{Physical model}
-\section{Lead dispersion}
-\section{Scattering ansatz}
-\section{Boundary matching}
-\section{Linear system}
-\section{Implementation}
-\section{Physics tests}
+\section{Introduction}
+
+The one-dimensional tight-binding chain is the simplest model that
+contains all the essential ingredients of a quantum scattering problem.
+Although simple, it already illustrates the complete workflow adopted
+throughout the \texttt{QTransport} project.
+
+The purpose of this chapter is to show how a physical model is translated
+into a numerical solver. The path followed here is
+
+\[
+	\text{equation}
+	\longrightarrow
+	\text{algorithm}
+	\longrightarrow
+	\text{code}
+	\longrightarrow
+	\text{physics test}.
+\]
+
+The same structure will later be used for matrix-valued Hamiltonians,
+graphene systems, and Bogoliubov--de Gennes problems.
+
+\section{Tight-Binding Hamiltonian}
+
+Consider a one-dimensional lattice with nearest-neighbor hopping. The
+Hamiltonian is
+
+\begin{equation}
+	H
+	=
+	\sum_j
+	\epsilon_j c_j^\dagger c_j
+	-
+	t
+	\sum_j
+	\left(
+	c_{j+1}^\dagger c_j
+	+
+	c_j^\dagger c_{j+1}
+	\right),
+	\label{eq:chain-hamiltonian}
+\end{equation}
+
+where $t$ is the hopping energy and $\epsilon_j$ is the onsite energy at
+site $j$.
+
+The stationary Schrödinger equation is
+
+\begin{equation}
+	H\ket{\psi}
+	=
+	E\ket{\psi}.
+	\label{eq:stationary-schrodinger}
+\end{equation}
+
+Projecting Eq.~(\ref{eq:stationary-schrodinger}) onto the lattice site
+basis gives
+
+\begin{equation}
+	E\psi_j
+	=
+	\epsilon_j\psi_j
+	-
+	t\psi_{j-1}
+	-
+	t\psi_{j+1}.
+	\label{eq:chain-schrodinger}
+\end{equation}
+
+Equivalently,
+
+\begin{equation}
+	(E-\epsilon_j)\psi_j
+	+
+	t\psi_{j-1}
+	+
+	t\psi_{j+1}
+	=
+	0.
+	\label{eq:chain-discrete-equation}
+\end{equation}
+
+Equation~(\ref{eq:chain-discrete-equation}) is the basic equation
+implemented by the first version of the solver.
+
+\section{Infinite Periodic Chain}
+
+In the leads, the onsite energy is constant,
+
+\begin{equation}
+	\epsilon_j=\epsilon_0.
+\end{equation}
+
+For a periodic chain, Bloch solutions have the form
+
+\begin{equation}
+	\psi_j = e^{ikj}.
+\end{equation}
+
+Substituting this expression into Eq.~\eqref{eq:chain-schrodinger}
+gives
+
+\begin{equation}
+	E e^{ikj}
+	=
+	\epsilon_0 e^{ikj}
+	-
+	t e^{ik(j-1)}
+	-
+	t e^{ik(j+1)}.
+\end{equation}
+
+Dividing by $e^{ikj}$,
+
+\begin{equation}
+	E
+	=
+	\epsilon_0
+	-
+	t e^{-ik}
+	-
+	t e^{ik}.
+\end{equation}
+
+Therefore, the dispersion relation is
+
+\begin{equation}
+	E
+	=
+	\epsilon_0
+	-
+	2t\cos k.
+	\label{eq:chain-dispersion}
+\end{equation}
+
+Solving for $k$ gives
+
+\begin{equation}
+	k
+	=
+	\arccos
+	\left(
+	\frac{\epsilon_0-E}{2t}
+	\right).
+	\label{eq:chain-wave-number}
+\end{equation}
+
+The corresponding group velocity is
+
+\begin{equation}
+	v(k)
+	=
+	\frac{dE}{dk}
+	=
+	2t\sin k.
+	\label{eq:chain-group-velocity}
+\end{equation}
+
+In the current implementation, this logic is represented by the class
+\texttt{OneDimensionalLead} in \texttt{src/qtransport/leads.py}.
+
+\section{Scattering Geometry}
+
+The system is divided into three regions:
+
+\begin{enumerate}
+	\item a left semi-infinite lead;
+	\item a finite scattering region;
+	\item a right semi-infinite lead.
+\end{enumerate}
+
+The scattering region contains $N$ sites,
+
+\begin{equation}
+	j=0,1,\ldots,N-1.
+\end{equation}
+
+The left lead occupies the sites
+
+\begin{equation}
+	j\leq -1,
+\end{equation}
+and the right lead occupies the sites
+\begin{equation}
+	j\geq N.
+\end{equation}
+
+An incoming wave from the left lead is partially reflected and partially
+transmitted through the scattering region.
+
+\section{Scattering Ansatz}
+
+For an incoming wave from the left, the wavefunction in the left lead is
+\begin{equation}
+	\psi_j
+	=
+	e^{ikj}
+	+
+	r e^{-ikj},
+	\qquad
+	j\leq -1,
+	\label{eq:left-lead-ansatz}
+\end{equation}
+where $r$ is the reflection amplitude.
+
+In the right lead, only an outgoing transmitted wave is allowed:
+
+\begin{equation}
+	\psi_j
+	=
+	\tau e^{ikj},
+	\qquad
+	j\geq N,
+	\label{eq:right-lead-ansatz}
+\end{equation}
+where $\tau$ is the transmission amplitude.
+
+The unknowns of the scattering problem are
+\begin{equation}
+	\psi_0,\psi_1,\ldots,\psi_{N-1},r,\tau.
+\end{equation}
+
+Thus the unknown vector is
+\begin{equation}
+	x
+	=
+	(\psi_0,\psi_1,\ldots,\psi_{N-1},r,\tau)^T.
+	\label{eq:unknown-vector}
+\end{equation}
+
+\section{Boundary Matching}
+
+The Schrödinger equation is imposed at all sites in the scattering
+region and also at the two boundary sites adjacent to it.
+
+For each site inside the scattering region,
+
+\begin{equation}
+	(E-\epsilon_j)\psi_j
+	+
+	t\psi_{j-1}
+	+
+	t\psi_{j+1}
+	=
+	0.
+\end{equation}
+
+At the left edge of the scattering region, the site $j=0$ is coupled to
+the lead site $j=-1$. From Eq.~\eqref{eq:left-lead-ansatz},
+
+\begin{equation}
+	\psi_{-1}
+	=
+	e^{-ik}
+	+
+	r e^{ik}.
+	\label{eq:psi-minus-one}
+\end{equation}
+
+At the right edge, the site $j=N-1$ is coupled to the lead site $j=N$.
+From Eq.~\eqref{eq:right-lead-ansatz},
+
+\begin{equation}
+	\psi_N
+	=
+	\tau e^{ikN}.
+	\label{eq:psi-N}
+\end{equation}
+
+These substitutions convert the scattering problem into a finite linear
+system.
+
+\section{Linear System}
+
+The equations are assembled in the form
+\begin{equation}
+	A x = b,
+	\label{eq:linear-system}
+\end{equation}
+where $A$ is the coefficient matrix, $x$ is the vector of unknown
+amplitudes, and $b$ contains the contribution of the incoming wave.
+
+The matrix has dimension
+
+\begin{equation}
+	(N+2)\times(N+2).
+\end{equation}
+
+The additional two equations come from imposing the tight-binding
+equation at the boundary sites $j=-1$ and $j=N$.
+
+The numerical solution is obtained using
+\begin{equation}
+	x = A^{-1}b,
+\end{equation}
+but the code does not compute the inverse explicitly. Instead, it uses
+\texttt{numpy.linalg.solve}, which is more stable numerically.
+
+\section{Explicit Form of the Linear System}
+
+For clarity, let us write the structure of the matrix system explicitly.
+The unknown vector is
+
+\begin{equation}
+	x
+	=
+	(\psi_0,\psi_1,\ldots,\psi_{N-1},r,\tau)^T.
+\end{equation}
+
+The coefficient matrix has the form
+
+\begin{equation}
+	A
+	=
+	\begin{pmatrix}
+		t            & 0            & 0            & \cdots & 0                & a_L      & 0         \\
+		E-\epsilon_0 & t            & 0            & \cdots & 0                & t e^{ik} & 0         \\
+		t            & E-\epsilon_1 & t            & \cdots & 0                & 0        & 0         \\
+		0            & t            & E-\epsilon_2 & \cdots & 0                & 0        & 0         \\
+		\vdots       & \vdots       & \vdots       & \ddots & t                & \vdots   & \vdots    \\
+		0            & 0            & 0            & \cdots & E-\epsilon_{N-1} & 0        & t e^{ikN} \\
+		0            & 0            & 0            & \cdots & t                & 0        & a_R
+	\end{pmatrix},
+	\label{eq:explicit-A}
+\end{equation}
+where the last two columns correspond to $r$ and $\tau$, respectively.
+The boundary coefficients are
+
+\begin{equation}
+	a_L
+	=
+	E e^{ik}
+	+
+	t e^{2ik},
+\end{equation}
+
+and
+
+\begin{equation}
+	a_R
+	=
+	E e^{ikN}
+	+
+	t e^{ik(N+1)}.
+\end{equation}
+
+The right-hand side contains only the incoming wave contribution:
+
+\begin{equation}
+	b
+	=
+	\begin{pmatrix}
+		-\left(Ee^{-ik}+t e^{-2ik}\right) \\
+		-t e^{-ik}                        \\
+		0                                 \\
+		0                                 \\
+		\vdots                            \\
+		0                                 \\
+		0
+	\end{pmatrix}.
+	\label{eq:explicit-b}
+\end{equation}
+
+This explicit form makes the role of the boundary matching clear. The
+bulk rows contain the tight-binding equation inside the scattering
+region, while the first and last rows impose the Schrödinger equation at
+the boundary sites of the leads.
+
+The important point is that the incoming wave appears in the vector $b$,
+whereas the unknown reflected and transmitted amplitudes appear as
+columns of the matrix $A$.
+
+
+
+
+
+
+
+
+\section{Observables}
+
+For identical left and right leads, the reflection and transmission
+probabilities are
+\begin{equation}
+	R = |r|^2,
+\end{equation}
+and
+\begin{equation}
+	T = |\tau|^2.
+\end{equation}
+
+Probability conservation requires
+
+\begin{equation}
+	R+T=1.
+	\label{eq:probability-conservation}
+\end{equation}
+
+For non-identical leads, the transmission probability must include the
+ratio of group velocities,
+
+\begin{equation}
+	T
+	=
+	\frac{v_R}{v_L}
+	|\tau|^2.
+\end{equation}
+
+This generalization will become important for graphene and
+Bogoliubov--de Gennes systems.
+
+\section{Physics Tests}
+
+The first implementation is validated using physics-based tests rather
+than fixed numerical values.
+
+The tests include:
+\begin{enumerate}
+	\item probability conservation, $R+T=1$;
+	\item absence of reflection in a homogeneous chain;
+	\item partial transmission through a potential barrier;
+	\item rejection of energies outside the propagating band.
+\end{enumerate}
+
+The homogeneous-chain test is especially important. If the scattering
+region is identical to the leads, then translational invariance implies
+
+\begin{equation}
+	R=0,
+	\qquad
+	T=1.
+\end{equation}
+
+This test detected the first sign error in the boundary equations of the
+solver.
+
+\section{From Equation to Code}
+
+The discrete Schrödinger equation,
+\begin{equation}
+	(E-\epsilon_j)\psi_j
+	+
+	t\psi_{j-1}
+	+
+	t\psi_{j+1}
+	=
+	0,
+\end{equation}
+is translated into one row of the linear system. In the implementation,
+the diagonal coefficient corresponds to
+
+\begin{equation}
+	(E-\epsilon_j),
+\end{equation}
+while the nearest-neighbor coefficients correspond to the hopping
+parameter $t$.
+
+Thus the mathematical equation determines the structure of the matrix
+row assembled in the solver.
+
+The current implementation is distributed across three files:
+
+\begin{itemize}
+	\item \texttt{src/qtransport/leads.py};
+	\item \texttt{src/qtransport/solver.py};
+	\item \texttt{src/qtransport/observables.py}.
+\end{itemize}
+
+\section{Software Design Notes}
+
+The first implementation introduces three basic ideas.
+
+\begin{enumerate}
+	\item A lead is an object that knows its dispersion relation and
+	      group velocity.
+
+	\item A solver is an object that assembles and solves the boundary
+	      matching problem.
+
+	\item Observables are computed separately from the solver, so that
+	      the numerical solution and the physical interpretation remain
+	      distinct.
+\end{enumerate}
+
+This separation will be preserved in later chapters. When the scalar
+chain is generalized to graphene or superconducting systems, the
+wavefunction will become a vector and the hopping constants will become
+matrices, but the conceptual structure will remain the same.
+
+\section{Lessons Learned}
+
+This first model establishes several principles that will guide the rest
+of the project.
+
+\begin{itemize}
+	\item A scattering problem can be reduced to a finite linear system
+	      once the semi-infinite leads are represented analytically.
+
+	\item The lead modes determine how boundary conditions are imposed.
+
+	\item Physics-based tests are essential for detecting implementation
+	      errors.
+
+	\item The one-dimensional chain is the minimal prototype of the
+	      general quantum transport architecture.
+\end{itemize}

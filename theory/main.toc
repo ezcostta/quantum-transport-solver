@@ -1,0 +1,14 @@
+\contentsline {chapter}{\numberline {1}The One-Dimensional Tight-Binding Chain}{1}{}%
+\contentsline {section}{\numberline {1.1}Introduction}{1}{}%
+\contentsline {section}{\numberline {1.2}Tight-Binding Hamiltonian}{1}{}%
+\contentsline {section}{\numberline {1.3}Infinite Periodic Chain}{2}{}%
+\contentsline {section}{\numberline {1.4}Scattering Geometry}{3}{}%
+\contentsline {section}{\numberline {1.5}Scattering Ansatz}{3}{}%
+\contentsline {section}{\numberline {1.6}Boundary Matching}{4}{}%
+\contentsline {section}{\numberline {1.7}Linear System}{4}{}%
+\contentsline {section}{\numberline {1.8}Explicit Form of the Linear System}{5}{}%
+\contentsline {section}{\numberline {1.9}Observables}{6}{}%
+\contentsline {section}{\numberline {1.10}Physics Tests}{6}{}%
+\contentsline {section}{\numberline {1.11}From Equation to Code}{7}{}%
+\contentsline {section}{\numberline {1.12}Software Design Notes}{7}{}%
+\contentsline {section}{\numberline {1.13}Lessons Learned}{8}{}%
