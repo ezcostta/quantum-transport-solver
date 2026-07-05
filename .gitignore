@@ -25,3 +25,13 @@ venv/
 " | save .gitignore
 # Python packaging
 *.egg-info/
+
+
+# LaTeX build artifacts
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.synctex.gz
+*.toc
+_minted-*/

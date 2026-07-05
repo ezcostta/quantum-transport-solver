@@ -22,7 +22,7 @@ def main():
         result = solver.solve(float(energy))
         transmissions.append(result.transmission)
 
-    output_dir = Path("figures/examples")
+    output_dir = Path("figures/generated")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     plt.figure(figsize=(6, 4))

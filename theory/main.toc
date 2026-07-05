@@ -12,3 +12,20 @@
 \contentsline {section}{\numberline {1.11}From Equation to Code}{7}{}%
 \contentsline {section}{\numberline {1.12}Software Design Notes}{7}{}%
 \contentsline {section}{\numberline {1.13}Lessons Learned}{8}{}%
+\contentsline {chapter}{\numberline {2}Transfer Matrix Method}{9}{}%
+\contentsline {section}{\numberline {2.1}Introduction}{9}{}%
+\contentsline {section}{\numberline {2.2}Motivation}{9}{}%
+\contentsline {section}{\numberline {2.3}From the Tight-Binding Equation to a Recurrence Relation}{10}{}%
+\contentsline {section}{\numberline {2.4}The Local Transfer Matrix}{11}{}%
+\contentsline {section}{\numberline {2.5}The Total Transfer Matrix}{11}{}%
+\contentsline {section}{\numberline {2.6}Boundary Conditions}{12}{}%
+\contentsline {section}{\numberline {2.7}Extraction of the Reflection and Transmission Amplitudes}{13}{}%
+\contentsline {section}{\numberline {2.8}Implementation in QTransport}{13}{}%
+\contentsline {subsection}{\numberline {2.8.1}Implementation of the Local Transfer Matrix}{14}{}%
+\contentsline {subsection}{\numberline {2.8.2}Implementation of the Total Transfer Matrix}{14}{}%
+\contentsline {subsection}{\numberline {2.8.3}Implementation of the Boundary Vectors}{15}{}%
+\contentsline {subsection}{\numberline {2.8.4}Implementation of the Scattering Solver}{16}{}%
+\contentsline {section}{\numberline {2.9}Validation Against the Boundary-Matching Method}{18}{}%
+\contentsline {section}{\numberline {2.10}Numerical Results}{19}{}%
+\contentsline {section}{\numberline {2.11}Lessons Learned}{21}{}%
+\contentsline {section}{\numberline {2.12}Reproducing the Results}{22}{}%
