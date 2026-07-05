@@ -1,425 +1,622 @@
 # One-Dimensional Tight-Binding Scattering Solver
 
-## 1. Physical model
+## 1. Introduction
 
-The first implemented model is a one-dimensional tight-binding chain connected to two identical semi-infinite leads.
+The first implemented model in **QTransport** is a one-dimensional tight-binding chain connected to two identical semi-infinite leads.
 
-The Hamiltonian convention is
+Although simple, this model already contains the complete workflow of a quantum scattering calculation:
 
-[
+1. Define the lead eigenmodes.
+2. Construct the scattering wavefunction.
+3. Apply the boundary conditions.
+4. Assemble the linear system.
+5. Solve for the scattering amplitudes.
+6. Compute the reflection and transmission probabilities.
+7. Verify the physical conservation laws.
+
+The future graphene, bilayer graphene, and Bogoliubov-de Gennes (BdG) implementations will follow exactly the same workflow, differing only in the internal structure of the wavefunction and Hamiltonian matrices.
+
+---
+
+# 2. Physical Model
+
+The Hamiltonian of the one-dimensional chain is
+
+$$
 H
 =
 
-## \sum_j \epsilon_j c_j^\dagger c_j
+\sum_j
+\epsilon_j
+c_j^\dagger c_j
+---------------
 
-t\sum*j
+t
+\sum_j
 \left(
-c*{j+1}^\dagger c_j
+c_{j+1}^\dagger c_j
++
+c_j^\dagger c_{j+1}
+\right),
+$$
 
-- c*j^\dagger c*{j+1}
-  \right).
-  ]
+where
 
-The corresponding stationary Schrödinger equation is
+- $t$ is the hopping energy;
+- $\epsilon_j$ is the onsite potential.
 
-[
+The stationary Schrödinger equation becomes
+
+$$
 E\psi_j
 =======
 
 ## \epsilon_j\psi_j
 
-## t\psi\_{j-1}
+## t\psi_{j-1}
 
-t\psi\_{j+1}.
-]
+t\psi_{j+1}.
+$$
 
 Rearranging,
 
-[
+$$
 (E-\epsilon_j)\psi_j
-
-- t\psi\_{j-1}
-- # t\psi\_{j+1}
++
+t\psi_{j-1}
++
+t\psi_{j+1}
+===========
 
 0.
 
-]
 
-This sign convention is important. It was also the source of the first bug found by the physics tests.
+$$
+
+This equation is the one implemented by the solver.
 
 ---
 
-## 2. Lead dispersion
+# 3. Geometry
 
-In the left and right leads, the onsite energy is taken as
+The system consists of
 
-[
-\epsilon=0.
-]
+```text
+Left Lead        Scattering Region          Right Lead
 
-For a plane wave
+←∞ ... -2 -1 | 0 1 2 ... N−1 | N N+1 ... +∞ →
+```
 
-[
-\psi_j = e^{ikj},
-]
+The scattering region contains
 
-the tight-binding equation gives
+$$
+N
+$$
 
-[
-E = -2t\cos k.
-]
+sites,
 
-More generally, if the lead onsite energy is (\epsilon_0),
+$$
+j=0,\ldots,N-1.
+$$
 
-[
-E = \epsilon_0 - 2t\cos k.
-]
+The leads are semi-infinite.
+
+---
+
+# 4. Lead Dispersion
+
+Inside the leads,
+
+$$
+\epsilon_j=\epsilon_0.
+$$
+
+Assuming a plane wave
+
+$$
+\psi_j=e^{ikj},
+$$
+
+the dispersion relation is
+
+$$
+E
+=
+
+## \epsilon_0
+
+2t\cos k.
+$$
 
 Therefore,
 
-[
-\cos k = \frac{\epsilon_0-E}{2t}.
-]
+$$
+\cos k
+======
 
-The code implements this in `OneDimensionalLead.wave_number`.
+\frac{\epsilon_0-E}{2t}.
+$$
+
+The method
+
+```python
+OneDimensionalLead.wave_number()
+```
+
+computes
+
+$$
+k
+=
+
+\arccos
+\left(
+\frac{\epsilon_0-E}{2t}
+\right).
+$$
 
 Only energies satisfying
 
-[
-\left|\frac{\epsilon_0-E}{2t}\right| \leq 1
-]
+$$
+\left|
+\frac{\epsilon_0-E}{2t}
+\right|
+\le1
+$$
 
-belong to the propagating band. Energies outside this interval raise a `ValueError`.
+correspond to propagating states.
+
+Outside this interval the solver raises
+
+```python
+ValueError
+```
+
+because the lead has no propagating modes.
 
 ---
 
-## 3. Scattering ansatz
+# 5. Scattering Ansatz
 
-The finite scattering region contains (N) sites:
+An incoming electron comes from the left lead.
 
-[
-j=0,1,\dots,N-1.
-]
+The wavefunction is written as
 
-The left lead occupies
+## Left lead
 
-[
-j\leq -1,
-]
-
-and the right lead occupies
-
-[
-j\geq N.
-]
-
-For an incoming wave from the left, the wavefunction is written as
-
-[
+$$
 \psi_j
 ======
 
 e^{ikj}
-
-- r e^{-ikj},
-  \qquad j\leq -1,
-  ]
-
-where (r) is the reflection amplitude.
-
-In the right lead,
-
-[
-\psi_j
-======
-
-\tau e^{ikj},
-\qquad j\geq N,
-]
-
-where (\tau) is the transmission amplitude.
-
-The unknowns of the problem are therefore
-
-[
-\psi_0,\psi_1,\dots,\psi_{N-1},r,\tau.
-]
-
-The solver constructs a linear system
-
-[
-A x = b,
-]
++
+r
+e^{-ikj},
+\qquad
+j\le -1,
+$$
 
 where
 
-[
-x =
-(\psi_0,\psi_1,\dots,\psi_{N-1},r,\tau)^T.
-]
+- the first term is the incoming wave;
+- $r$ is the reflection amplitude.
 
 ---
 
-## 4. Equations inside the scattering region
+## Right lead
 
-For each internal site (j), the equation is
+Only transmitted waves are allowed,
 
-[
+$$
+\psi_j
+======
+
+\tau
+e^{ikj},
+\qquad
+j\ge N,
+$$
+
+where
+
+$$
+\tau
+$$
+
+is the transmission amplitude.
+
+---
+
+# 6. Unknown Variables
+
+The solver treats the following quantities as unknowns:
+
+$$
+\psi_0,
+\psi_1,
+\ldots,
+\psi_{N-1},
+r,
+\tau.
+$$
+
+Therefore the unknown vector is
+
+$$
+x=
+\begin{pmatrix}
+\psi_0\
+\psi_1\
+\vdots\
+\psi_{N-1}\
+r\
+\tau
+\end{pmatrix}.
+$$
+
+The matrix system has
+
+$$
+N+2
+$$
+
+unknowns.
+
+---
+
+# 7. Equations Inside the Scattering Region
+
+For every site inside the scattering region,
+
+$$
 (E-\epsilon_j)\psi_j
-
-- t\psi\_{j-1}
-- # t\psi\_{j+1}
++
+t\psi_{j-1}
++
+t\psi_{j+1}
+===========
 
 0.
 
-]
 
-For (1\leq j\leq N-2), both neighbors are inside the scattering region.
+$$
 
-For (j=0), the left neighbor is in the left lead:
+For interior sites
 
-[
-\psi\_{-1}
-=========
+$$
+1\le j\le N-2,
+$$
 
-e^{-ik}
+both neighbors belong to the scattering region.
 
-- r e^{ik}.
-  ]
+For the edge sites,
 
-For (j=N-1), the right neighbor is in the right lead:
+- the left neighbor belongs to the left lead;
+- the right neighbor belongs to the right lead.
 
-[
-\psi_N
-======
-
-\tau e^{ikN}.
-]
-
-These boundary substitutions are what couple the internal scattering-region amplitudes to the reflection and transmission amplitudes.
+These substitutions introduce the unknown reflection and transmission amplitudes into the system.
 
 ---
 
-## 5. Left boundary equation
+# 8. Left Boundary Equation
 
-The solver also imposes the tight-binding equation at the last site of the left lead, (j=-1):
+The Schrödinger equation is also imposed at
 
-[
-E\psi\_{-1}
-==========
-
-## -t\psi\_{-2}
-
-t\psi_0.
-]
+$$
+j=-1.
+$$
 
 Using
 
-[
-\psi\_{-1}
+$$
+\psi_{-1}
 =========
 
 e^{-ik}
-
-- r e^{ik},
-  ]
++
+r
+e^{ik},
+$$
 
 and
 
-[
-\psi\_{-2}
+$$
+\psi_{-2}
 =========
 
 e^{-2ik}
++
+r
+e^{2ik},
+$$
 
-- r e^{2ik},
-  ]
+the equation
 
-one obtains an equation involving (\psi_0) and (r).
+$$
+E\psi_{-1}
+==========
 
-This equation is the first row of the matrix system.
+## -t\psi_{-2}
+
+t\psi_0
+$$
+
+becomes an equation involving only
+
+- $\psi_0$;
+- $r$.
+
+This is the first row of the linear system.
 
 ---
 
-## 6. Right boundary equation
+# 9. Right Boundary Equation
 
-Similarly, the solver imposes the tight-binding equation at the first site of the right lead, (j=N):
+Similarly,
 
-[
+$$
+j=N
+$$
+
+satisfies
+
+$$
 E\psi_N
 =======
 
-## -t\psi\_{N-1}
+## -t\psi_{N-1}
 
-t\psi\_{N+1}.
-]
+t\psi_{N+1}.
+$$
 
 Using
 
-[
+$$
 \psi_N
 ======
 
-\tau e^{ikN},
-]
+\tau
+e^{ikN},
+$$
 
 and
 
-[
-\psi\_{N+1}
+$$
+\psi_{N+1}
 ==========
 
-\tau e^{ik(N+1)},
-]
+\tau
+e^{ik(N+1)},
+$$
 
-one obtains an equation involving (\psi\_{N-1}) and (\tau).
+one obtains an equation involving
 
-This equation is the last row of the matrix system.
+- $\psi_{N-1}$;
+- $\tau$.
+
+This becomes the last row of the matrix system.
 
 ---
 
-## 7. Structure of the linear system
+# 10. Matrix Structure
 
-The unknown vector is ordered as
+The solver assembles
 
-[
-x =
-(\psi_0,\psi_1,\dots,\psi_{N-1},r,\tau)^T.
-]
+$$
+A,x=b.
+$$
 
-Therefore:
+The unknown ordering is
 
-- columns (0,\dots,N-1) correspond to the scattering-region wavefunction;
-- column (N) corresponds to (r);
-- column (N+1) corresponds to (\tau).
+|   Column | Unknown      |
+| -------: | ------------ |
+|        0 | $\psi_0$     |
+|        1 | $\psi_1$     |
+| $\vdots$ | $\vdots$     |
+|    $N-1$ | $\psi_{N-1}$ |
+|      $N$ | $r$          |
+|    $N+1$ | $\tau$       |
 
-The matrix has size
+The matrix size is
 
-[
-(N+2)\times(N+2),
-]
+$$
+(N+2)\times(N+2).
+$$
 
-because there are:
-
-- (N) equations for the scattering region;
-- one equation at the left boundary;
-- one equation at the right boundary.
-
-The system is solved with
-
-[
-x = A^{-1}b,
-]
-
-implemented numerically using
+The solution is obtained with
 
 ```python
-np.linalg.solve(A, b)
+x = np.linalg.solve(A, b)
 ```
 
-rather than explicitly computing the inverse.
+instead of explicitly computing
+
+$$
+A^{-1}.
+$$
+
+This is numerically more stable and efficient.
 
 ---
 
-## 8. Reflection and transmission probabilities
+# 11. Reflection and Transmission
 
-For identical left and right leads, the group velocities are equal.
+For identical left and right leads,
 
-Therefore,
+$$
+R
+=
 
-[
-R = |r|^2,
-]
+|r|^2,
+$$
 
 and
 
-[
-T = |\tau|^2.
-]
+$$
+T
+=
 
-The probability conservation check is
-
-[
-R+T=1.
-]
-
-This is implemented in `observables.py`.
-
-For non-identical leads, the transmission probability will later need a velocity factor:
-
-[
-T =
-\frac{v_R}{v_L}
 |\tau|^2.
-]
+$$
 
-This will become important when we generalize to matrix-valued leads, graphene, and Bogoliubov-de Gennes systems.
+The solver checks
+
+$$
+R+T=1,
+$$
+
+which expresses probability conservation.
+
+For different leads this will later become
+
+$$
+T
+=
+
+\frac{v_R}{v_L}
+|\tau|^2,
+$$
+
+where
+
+- $v_L$ is the group velocity in the left lead;
+- $v_R$ is the group velocity in the right lead.
+
+This generalization will be essential for graphene and BdG systems.
 
 ---
 
-## 9. Physics tests
+# 12. Physics Tests
 
-The current test suite checks four basic physical properties.
+The current implementation contains four physics tests.
 
-### Probability conservation
+## Probability Conservation
 
-For a Hermitian scattering region connected to identical leads,
-
-[
+$$
 R+T=1.
-]
+$$
 
-### Uniform chain
+This verifies that the scattering matrix is unitary.
 
-If the scattering region is identical to the leads,
+---
 
-[
-\epsilon_j=0,
-]
-
-there should be no reflection:
-
-[
-R=0,
-\qquad
-T=1.
-]
-
-This test caught a sign error in the boundary equations.
-
-### Barrier
-
-For a nonzero onsite potential, the system should scatter:
-
-[
-0<T<1.
-]
-
-### Energy outside the band
+## Uniform Chain
 
 If
 
-[
-|E|>2t,
-]
+$$
+\epsilon_j=0,
+$$
 
-there are no propagating states in the lead, so the solver raises an exception.
+the scattering region is identical to the leads.
+
+Therefore,
+
+$$
+R=0,
+\qquad
+T=1.
+$$
+
+This test detected the first implementation bug (an incorrect sign in the boundary equations).
 
 ---
 
-## 10. Why this model matters
+## Potential Barrier
 
-Although this is only a scalar one-dimensional chain, it already contains the complete logic of a scattering calculation:
+For
 
-1. define lead modes;
-2. write an incoming plus reflected wave on the left;
-3. write a transmitted wave on the right;
-4. impose boundary matching;
-5. assemble a linear system;
-6. solve for scattering amplitudes;
-7. compute observables;
-8. verify conservation laws.
+$$
+\epsilon_j\ne0,
+$$
 
-The future graphene and BdG solvers will follow the same structure, but with matrix-valued wavefunctions and block Hamiltonians.
+the transmission must satisfy
 
-In that sense, this model is not a toy that will be discarded. It is the minimal working prototype of the full quantum-transport architecture.
+$$
+0<T<1.
+$$
+
+---
+
+## Energy Outside the Band
+
+For
+
+$$
+|E-\epsilon_0|>2t,
+$$
+
+the leads possess no propagating states.
+
+The solver therefore raises
+
+```python
+ValueError
+```
+
+instead of attempting an unphysical calculation.
+
+---
+
+# 13. Code Organization
+
+The implementation is currently divided into three modules.
+
+## `leads.py`
+
+Defines the semi-infinite lead.
+
+Responsibilities:
+
+- compute the dispersion relation;
+- compute the wave number;
+- compute the group velocity.
+
+---
+
+## `solver.py`
+
+Builds the complete linear system
+
+$$
+A,x=b
+$$
+
+and solves it.
+
+Responsibilities:
+
+- assemble the boundary equations;
+- assemble the scattering-region equations;
+- solve the linear system;
+- return the scattering amplitudes.
+
+---
+
+## `observables.py`
+
+Computes physical quantities from the amplitudes.
+
+Responsibilities:
+
+- reflection probability;
+- transmission probability;
+- probability conservation.
+
+---
+
+# 14. Why This Model Matters
+
+Although the current implementation describes only a scalar one-dimensional chain, it already contains the complete logical structure of the future transport framework.
+
+The same algorithmic steps will be used for
+
+- graphene;
+- bilayer graphene;
+- ferromagnetic systems;
+- superconducting systems;
+- Bogoliubov-de Gennes Hamiltonians.
+
+The only difference will be that scalar quantities become vectors and matrices.
+
+For this reason, the one-dimensional chain should not be viewed as a temporary toy model. It is the minimal working prototype upon which the entire **QTransport** framework will be built.
