@@ -1,5 +1,6 @@
 import numpy as np
 from qtransport.leads import OneDimensionalLead
+from qtransport.results import ScatteringResult
 
 
 class OneDimensionalScatteringSolver:
@@ -77,10 +78,8 @@ class OneDimensionalScatteringSolver:
         r = x[r_index]
         tau = x[tau_index]
 
-        return {
-            "energy": energy,
-            "k": k,
-            "psi_region": psi_region,
-            "r": r,
-            "t": tau,
-        }
+        return ScatteringResult(
+            energy=energy,
+            reflection_amplitude=r,
+            transmission_amplitude=tau,
+        )

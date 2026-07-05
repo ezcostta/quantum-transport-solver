@@ -8,6 +8,7 @@ from qtransport.observables import (
 
 def main():
     onsite_region = [0.5, 0.5, 0.5, 0.5]
+
     solver = OneDimensionalScatteringSolver(
         onsite_region=onsite_region,
         hopping=1.0,
@@ -19,10 +20,9 @@ def main():
     R = reflection_probability(result)
     T = transmission_probability(result)
 
-    print(f"Energy       = {result['energy']:.6f}")
-    print(f"k            = {result['k']:.6f}")
-    print(f"r            = {result['r']:.6f}")
-    print(f"t            = {result['t']:.6f}")
+    print(f"Energy       = {result.energy:.6f}")
+    print(f"r            = {result.reflection_amplitude:.6f}")
+    print(f"t            = {result.transmission_amplitude:.6f}")
     print(f"R            = {R:.12f}")
     print(f"T            = {T:.12f}")
     print(f"R + T        = {R + T:.12f}")

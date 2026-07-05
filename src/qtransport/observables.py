@@ -1,12 +1,10 @@
 def reflection_probability(result):
-    return abs(result["r"]) ** 2
+    return result.reflection
 
 
 def transmission_probability(result):
-    return abs(result["t"]) ** 2
+    return result.transmission
 
 
 def conservation_error(result):
-    R = reflection_probability(result)
-    T = transmission_probability(result)
-    return abs(R + T - 1)
+    return result.conservation_error
